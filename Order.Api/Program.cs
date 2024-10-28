@@ -1,9 +1,29 @@
+using System.Text.Json;
+using MassTransit;
+using Microsoft.EntityFrameworkCore;
+using Order.Api.Contexts;
+using Order.Api.Models;
+using Order.Api.ViewModels;
+using Shared.Events;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddDbContext<OrderDbContext>(options =>
+{
+    options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer"));
+});
+
+builder.Services.AddMassTransit(configure =>
+{
+    configure.UsingRabbitMq((context, factoryConfigurator) =>
+    {
+        factoryConfigurator.Host(builder.Configuration["RabbitMQ"]);
+    });
+});
 
 var app = builder.Build();
 
@@ -14,31 +34,48 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
+app.MapPost("/create-order", async (CreateOrderVM model, OrderDbContext orderDbContext) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
+    Order.Api.Models.Order order = new()
     {
-        var forecast = Enumerable.Range(1, 5).Select(index =>
-                new WeatherForecast
-                (
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    summaries[Random.Shared.Next(summaries.Length)]
-                ))
-            .ToArray();
-        return forecast;
-    })
-    .WithName("GetWeatherForecast")
-    .WithOpenApi();
+        BuyerId = model.BuyerId,
+        CreatedDate = DateTime.UtcNow,
+        TotalPrice = model.OrderItems.Sum(oi => oi.Count * oi.Price),
+        OrderItems = model.OrderItems.Select(oi => new Order.Api.Models.OrderItem
+        {
+            Price = oi.Price,
+            Count = oi.Count,
+            ProductId = oi.ProductId,
+        }).ToList(),
+    };
+
+    await orderDbContext.Orders.AddAsync(order);
+    await orderDbContext.SaveChangesAsync();
+    
+    var idempotentToken = Guid.NewGuid();
+    OrderCreatedEvent orderCreatedEvent = new()
+    {
+        BuyerId = order.BuyerId,
+        OrderId = order.Id,
+        TotalPrice = model.OrderItems.Sum(oi => oi.Count * oi.Price),
+        OrderItems = model.OrderItems.Select(oi => new Shared.Datas.OrderItem
+        {
+            Price = oi.Price,
+            Count = oi.Count,
+            ProductId = oi.ProductId
+        }).ToList(),
+        IdempotentToken = idempotentToken
+    };
+
+    OrderOutbox orderOutbox = new()
+    {
+        OccuredOn = DateTime.UtcNow,
+        ProcessedDate = null,
+        Payload = JsonSerializer.Serialize(orderCreatedEvent),
+        Type = nameof(OrderCreatedEvent),
+    };
+    await orderDbContext.OrderOutboxes.AddAsync(orderOutbox);
+    await orderDbContext.SaveChangesAsync();
+});
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Stock.Service", "Stock.Service\Stock.Service.csproj", "{15F0BA85-EBEC-4DC5-9A4F-6DDD7B287987}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Order.Outbox.Table.Publisher.Service", "Order.Outbox.Table.Publisher.Service\Order.Outbox.Table.Publisher.Service.csproj", "{2FC451C7-5B11-4A8A-9894-BD826324A26F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,5 +31,9 @@ Global
 		{15F0BA85-EBEC-4DC5-9A4F-6DDD7B287987}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{15F0BA85-EBEC-4DC5-9A4F-6DDD7B287987}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{15F0BA85-EBEC-4DC5-9A4F-6DDD7B287987}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2FC451C7-5B11-4A8A-9894-BD826324A26F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2FC451C7-5B11-4A8A-9894-BD826324A26F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2FC451C7-5B11-4A8A-9894-BD826324A26F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2FC451C7-5B11-4A8A-9894-BD826324A26F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
