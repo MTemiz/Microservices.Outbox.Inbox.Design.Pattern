@@ -10,13 +10,20 @@ public class OrderCreatedEventConsumer(StockDbContext _stockDbContext) : IConsum
 {
     public async Task Consume(ConsumeContext<OrderCreatedEvent> context)
     {
-        await _stockDbContext.OrderInboxes.AddAsync(new()
-        {
-            Processed = false,
-            Payload = JsonSerializer.Serialize(context.Message)
-        });
+        var result = await _stockDbContext.OrderInboxes.AnyAsync(
+            c => c.IdempotentToken == context.Message.IdempotentToken);
 
-        await _stockDbContext.SaveChangesAsync();
+        if (!result)
+        {
+            await _stockDbContext.OrderInboxes.AddAsync(new()
+            {
+                Processed = false,
+                Payload = JsonSerializer.Serialize(context.Message),
+                IdempotentToken = context.Message.IdempotentToken
+            });
+
+            await _stockDbContext.SaveChangesAsync();
+        }
 
         var inboxList = await _stockDbContext
             .OrderInboxes
